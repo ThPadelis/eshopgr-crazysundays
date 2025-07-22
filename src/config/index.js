@@ -1,0 +1,1 @@
+export const DB_FILE = process.env.DB_FILE || 'db.json'; 

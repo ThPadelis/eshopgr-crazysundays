@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  eshop-notifier:
+    build: .
+    container_name: eshop-notifier
+    volumes:
+      - ./:/app
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped 
