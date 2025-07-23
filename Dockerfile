@@ -11,7 +11,5 @@ RUN npm install --production
 # Copy the rest of the app
 COPY . .
 
-# Expose no ports (not a web server)
-
 # Run the app
 CMD ["npm", "start"] 

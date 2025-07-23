@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import logger from '../config/index.js';
 
 export function scheduleWeeklyTask(task) {
   // Runs every Sunday at 1am
@@ -6,7 +7,7 @@ export function scheduleWeeklyTask(task) {
     try {
       await task();
     } catch (err) {
-      console.error('Scheduled task error:', err);
+      logger.error('Scheduled task error:', err);
     }
   });
 } 

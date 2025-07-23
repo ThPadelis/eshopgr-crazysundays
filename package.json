@@ -39,6 +39,9 @@
     "dotenv": "^17.2.0",
     "iconv-lite": "^0.6.3",
     "lowdb": "^7.0.1",
-    "node-cron": "^4.2.1"
+    "mongoose": "^8.16.4",
+    "node-cron": "^4.2.1",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
   }
 }

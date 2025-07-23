@@ -1,73 +1,50 @@
-import { Low } from 'lowdb';
-import { JSONFile } from 'lowdb/node';
-import path from 'path';
+import Item from './item.model.js';
 
-const dbFile = path.resolve(process.cwd(), 'db.json');
-const adapter = new JSONFile(dbFile);
-const db = new Low(adapter, { defaultData: { items: [] } });
-
-export async function initDb() {
-  await db.read();
-  db.data.items = db.data.items || [];
-  await db.write();
-  return db;
-}
-
-export function getDb() {
-  if (!db.data) throw new Error('Database not initialized. Call initDb() first.');
-  return db;
-}
-
-export async function insertItem({ title, url, price, image, productCode }) {
-  await db.read();
-  db.data.items = db.data.items || [];
-  db.data.items.push({
+export async function insertItem({ title, url, price, image, productCode, category }) {
+  const item = new Item({
     title,
     url,
     price,
     image,
     productCode,
-    created_at: new Date().toISOString(),
+    category,
+    created_at: new Date(),
+    priceHistory: [{ price, date: new Date() }],
   });
-  await db.write();
+  await item.save();
 }
 
 export async function getAllItems() {
-  await db.read();
-  const items = db.data.items || [];
-  return items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return Item.find().sort({ created_at: -1 });
 }
 
 export async function findItemByTitle(title) {
-  await db.read();
-  const items = db.data.items || [];
-  return items.find((item) => item.title === title);
+  return Item.findOne({ title });
 }
 
 export async function findItemByProductCode(productCode) {
-  await db.read();
-  const items = db.data.items || [];
-  return items.find((item) => item.productCode === productCode);
+  return Item.findOne({ productCode });
 }
 
-export async function insertOrUpdateItem({ title, url, price, image, productCode }) {
-  await db.read();
-  db.data.items = db.data.items || [];
-  const now = new Date().toISOString();
-
-  let item = db.data.items.find((i) => i.productCode === productCode);
+export async function insertOrUpdateItem({ title, url, price, image, productCode, category }) {
+  const now = new Date();
+  let item = await Item.findOne({ productCode });
   if (item) {
-    // Ensure priceHistory exists for legacy items
+    // For backward compatibility: ensure priceHistory exists for legacy items
     if (!Array.isArray(item.priceHistory)) {
       item.priceHistory = [];
     }
-    const lastPrice = item.priceHistory[item.priceHistory.length - 1]?.price;
+    const lastPrice = item.priceHistory.length > 0 ? item.priceHistory[item.priceHistory.length - 1].price : undefined;
     if (lastPrice !== price) {
       item.priceHistory.push({ price, date: now });
       item.price = price;
     }
+    if (category) {
+      item.category = category;
+    }
+    await item.save();
   } else {
-    db.data.items.push({
+    item = new Item({
       title,
       url,
       price,
@@ -75,7 +52,8 @@ export async function insertOrUpdateItem({ title, url, price, image, productCode
       productCode,
       created_at: now,
       priceHistory: [{ price, date: now }],
+      category,
     });
+    await item.save();
   }
-  await db.write();
 } 

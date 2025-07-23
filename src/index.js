@@ -1,9 +1,10 @@
-import { initDb, findItemByProductCode, insertOrUpdateItem } from './db/index.js';
+import { findItemByProductCode, insertOrUpdateItem } from './db/index.js';
 import { scrapeCrazySundays } from './scraper/index.js';
-import { scheduleWeeklyTask } from './scheduler/index.js';
+import logger from './config/index.js';
+import { notifyTelegram } from './utils/notifier.js';
+import { connectToMongo } from './db/mongoose.js';
 
 async function runNotifier() {
-  await initDb();
   const items = await scrapeCrazySundays();
   let newCount = 0;
   let priceUpdateCount = 0;
@@ -13,27 +14,36 @@ async function runNotifier() {
     if (!exists) {
       await insertOrUpdateItem(item);
       newCount++;
+      await notifyTelegram(
+        `🆕 <b>New Item:</b> ${item.title}\n💶 Price: ${item.price}\n🔗 <a href='${item.url}'>View Item</a>`,
+        item.image,
+      );
     } else {
-      // Only update if price has changed
       const lastPrice = exists.priceHistory?.[exists.priceHistory.length - 1]?.price;
       if (lastPrice !== item.price) {
         await insertOrUpdateItem(item);
         priceUpdateCount++;
+        await notifyTelegram(
+          `🔔 <b>Price Update:</b> ${item.title}\n💶 Old Price: ${lastPrice}\n💶 New Price: ${item.price}\n🔗 <a href='${item.url}'>View Item</a>`,
+          item.image,
+        );
       }
     }
   }
 
-  console.log(
+  logger.info(
     `Scraped ${items.length} items. New items added: ${newCount}. Price updates: ${priceUpdateCount}`,
   );
 }
 
-if (process.env.NODE_ENV === 'production') {
-  scheduleWeeklyTask(runNotifier);
-  console.log('Scheduler started: will run every Sunday at 1am');
-} else {
-  runNotifier().catch((err) => {
-    console.error('Error running notifier:', err);
-    process.exit(1);
-  });
+async function main() {
+  await connectToMongo();
+  await runNotifier();
+  logger.info('Exiting...');
+  process.exit(0);
 }
+
+main().catch((err) => {
+  logger.error('Startup error:', err);
+  process.exit(1);
+});

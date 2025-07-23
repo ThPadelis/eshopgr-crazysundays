@@ -1,97 +1,93 @@
 # e-shop Notifier
 
-A lightweight Node.js tool to scrape [e-shop.gr Crazy Sundays](https://www.e-shop.gr/crazysundays), store item data, track price history, and notify you of new or discounted items. Designed for home server deployment and minimal resource usage.
+A lightweight Node.js tool to scrape [e-shop.gr Crazy Sundays](https://www.e-shop.gr/crazysundays), store item data, track price history, and notify you of new or discounted items via Telegram. Designed for home server deployment and minimal resource usage.
 
 ## Features
-- Scrapes e-shop Crazy Sundays offers weekly (every Sunday at 1am)
-- Stores items in a local JSON database (`db.json`)
-- Tracks price history for recurring items
-- Scheduler runs automatically in production (via cron)
+- Scrapes e-shop Crazy Sundays offers
+- Stores items and price history in MongoDB
+- Notifies you via Telegram for new items and price changes
 - Docker and docker-compose support for easy deployment
-- Clean, modular codebase (scraper, db, scheduler, etc.)
 - Handles Greek text and product codes (SKU)
-- Easily extensible for notifications (Telegram, WhatsApp, etc.)
+- Easily extensible for other notification services
 
 ## Project Structure
 ```
 src/
-  config/       # Configuration files
-  db/           # Database logic
-  notifier/     # Notification logic (to be implemented)
+  config/       # Logger and configuration
+  db/           # Mongoose models and MongoDB connection
   scraper/      # Scraping logic
-  scheduler/    # Scheduling logic
-  utils/        # Utility functions
+  utils/        # Utility functions (env, notifier)
   index.js      # Main entry point
 ```
 
 ## Setup
-1. **Install dependencies:**
-   ```sh
-   npm install
-   ```
-2. **Configure environment variables:**
-   - Create a `.env` file in the project root (see below for examples).
-   - `NODE_ENV=production` enables the scheduler (cron job). In development, the script runs once and exits.
-3. **Run the app:**
-   ```sh
-   npm start
-   ```
 
-## Docker Usage
-1. **Build and run with Docker Compose:**
-   ```sh
-   docker-compose up --build
-   ```
-   - The app will run in production mode by default and schedule itself to run every Sunday at 1am.
-   - Data and code are mounted from your local directory for persistence and easy updates.
+### 1. Install dependencies
+```sh
+npm install
+```
 
-## Environment Variables
-Example `.env`:
+### 2. Configure environment variables
+Create a `.env` file in the project root with the following:
 ```
 NODE_ENV=production
-# Add notification service credentials here if needed
+APP_MONGO_URI=mongodb://localhost:27017/eshop
+APP_TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+APP_TELEGRAM_CHAT_ID=your_telegram_chat_id
 ```
+- Replace `your_telegram_bot_token` and `your_telegram_chat_id` with your actual Telegram bot credentials.
+- If using Docker Compose, the default Mongo URI is `mongodb://mongo:27017/eshop`.
 
-## Development vs Production
-- **Development:** (`NODE_ENV` not set to `production`)
-  - The script runs once and exits (for easy testing).
-- **Production:** (`NODE_ENV=production`)
-  - The scheduler runs the main task every Sunday at 1am.
-
-## Price History Tracking
-- Each item is uniquely identified by its product code (SKU).
-- If an item reappears, its price history is updated (with timestamp).
-- Example item in `db.json`:
-  ```json
-  {
-    "title": "ΟΘΟΝΗ TESLA 27MC645BF 27'' LED FULL HD IPS 100HZ BLACK BKS.0244867",
-    "url": "https://www.e-shop.gr/othoni-tesla-27mc645bf-27-led-full-hd-ips-100hz-black",
-    "price": "579.00",
-    "image": "https://www.e-shop.gr/images/....jpg",
-    "productCode": "BKS.0244867",
-    "created_at": "2024-06-23T01:00:00.000Z",
-    "priceHistory": [
-      { "price": "579.00", "date": "2024-06-23T01:00:00.000Z" },
-      { "price": "499.00", "date": "2024-06-30T01:00:00.000Z" }
-    ]
-  }
+### 3. Start MongoDB
+- **Locally:**
+  ```sh
+  docker run -d --name mongo -p 27017:27017 -v mongo-data:/data/db mongo
+  ```
+- **With Docker Compose:**
+  ```sh
+  docker-compose up -d mongo
   ```
 
-## Customization & Extensibility
+### 4. Run the app
+- **Locally:**
+  ```sh
+  npm start
+  ```
+- **With Docker Compose:**
+  ```sh
+  docker-compose up --build eshop-notifier
+  ```
+
+> **Note:** The app runs once per execution and then exits. To automate periodic runs, use your own scheduling system (e.g., systemd timers, external cron, or a task scheduler of your choice).
+
+## Environment Variables
+| Variable                | Description                        |
+|-------------------------|------------------------------------|
+| NODE_ENV                | Set to `production` for prod mode  |
+| APP_MONGO_URI           | MongoDB connection string           |
+| APP_TELEGRAM_BOT_TOKEN  | Telegram bot token                  |
+| APP_TELEGRAM_CHAT_ID    | Telegram chat ID                    |
+
+## Notifications
+- The app sends a Telegram message for each new item and each price update, including the product image, price, and a link.
+
+## Data Model (MongoDB)
+Each item document includes:
+- `title`, `url`, `price`, `image`, `productCode`, `created_at`, `category` (optional), and `priceHistory` (array of `{price, date}`)
+
+## Development & Customization
 - **Notifications:**
-  - Add your preferred notification logic in `src/notifier/` (e.g., Telegram, WhatsApp, email).
+  - Edit `src/utils/notifier.js` to add more notification channels.
 - **Scraper:**
   - Update selectors in `src/scraper/index.js` if the e-shop page layout changes.
-- **Scheduler:**
-  - Adjust the cron schedule in `src/scheduler/index.js` if you want a different frequency.
+- **Database:**
+  - The schema is defined in `src/db/item.model.js`.
 
 ## Troubleshooting
-- **Greek text issues:**
-  - The scraper uses `iconv-lite` to decode Greek text correctly. If you see encoding issues, check the HTML source and encoding.
-- **Database errors:**
-  - If you change the data model, you may need to clean or migrate your `db.json`.
-- **Scheduler not running:**
-  - Ensure `NODE_ENV=production` is set in your environment or Docker Compose file.
+- **MongoDB connection errors:**
+  - Ensure MongoDB is running and the URI is correct.
+- **Telegram errors:**
+  - Double-check your bot token and chat ID.
 
 ## Linting & Formatting
 - Lint: `npm run lint`
