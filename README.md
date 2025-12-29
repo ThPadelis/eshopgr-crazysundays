@@ -60,6 +60,24 @@ APP_TELEGRAM_CHAT_ID=your_telegram_chat_id
 
 > **Note:** The app runs once per execution and then exits. To automate periodic runs, use your own scheduling system (e.g., systemd timers, external cron, or a task scheduler of your choice).
 
+## Database Configuration
+
+### Default (Local MongoDB)
+By default, `docker-compose up` spins up a local MongoDB container and connects to it. No extra configuration is needed.
+
+```bash
+docker-compose up -d --build
+```
+
+### MongoDB Atlas (or External MongoDB)
+To use an external MongoDB instance (like MongoDB Atlas), set the `APP_MONGO_URI` environment variable before running docker-compose.
+
+```bash
+# Example
+export APP_MONGO_URI="mongodb+srv://<username>:<password>@cluster0.mongodb.net/eshop?retryWrites=true&w=majority"
+docker-compose up -d --build
+```
+
 ## Environment Variables
 | Variable                | Description                        |
 |-------------------------|------------------------------------|

@@ -5,9 +5,10 @@ services:
     container_name: eshop-notifier
     volumes:
       - ./:/app
+      - /app/node_modules
     environment:
       - NODE_ENV=production
-      - APP_MONGO_URI=mongodb://mongo:27017/eshop
+      - APP_MONGO_URI=${APP_MONGO_URI:-mongodb://mongo:27017/eshop}
       - APP_TELEGRAM_BOT_TOKEN=${APP_TELEGRAM_BOT_TOKEN}
       - APP_TELEGRAM_CHAT_ID=${APP_TELEGRAM_CHAT_ID}
     depends_on:
