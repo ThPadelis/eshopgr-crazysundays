@@ -3,6 +3,7 @@ import { scrapeCrazySundays } from './scraper/index.js';
 import logger from './config/index.js';
 import { notifyTelegram } from './utils/notifier.js';
 import { connectToMongo } from './db/mongoose.js';
+import { isTechItem, getCategory } from './utils/classifier.js';
 
 async function runNotifier() {
   const items = await scrapeCrazySundays();
@@ -11,22 +12,33 @@ async function runNotifier() {
 
   for (const item of items) {
     const exists = await findItemByProductCode(item.productCode);
+    const isTech = isTechItem(item);
+    item.category = getCategory(item);
+
     if (!exists) {
       await insertOrUpdateItem(item);
       newCount++;
-      await notifyTelegram(
-        `🆕 <b>New Item:</b> ${item.title}\n💶 Price: ${item.price}\n🔗 <a href='${item.url}'>View Item</a>`,
-        item.image,
-      );
+      if (isTech) {
+        await notifyTelegram(
+          `🆕 <b>New Item:</b> ${item.title}\n💶 Price: ${item.price}\n🔗 <a href='${item.url}'>View Item</a>`,
+          item.image,
+        );
+      } else {
+        logger.info(`Skipping notification for non-tech item: ${item.title}`);
+      }
     } else {
       const lastPrice = exists.priceHistory?.[exists.priceHistory.length - 1]?.price;
       if (lastPrice !== item.price) {
         await insertOrUpdateItem(item);
         priceUpdateCount++;
-        await notifyTelegram(
-          `🔔 <b>Price Update:</b> ${item.title}\n💶 Old Price: ${lastPrice}\n💶 New Price: ${item.price}\n🔗 <a href='${item.url}'>View Item</a>`,
-          item.image,
-        );
+        if (isTech) {
+          await notifyTelegram(
+            `🔔 <b>Price Update:</b> ${item.title}\n💶 Old Price: ${lastPrice}\n💶 New Price: ${item.price}\n🔗 <a href='${item.url}'>View Item</a>`,
+            item.image,
+          );
+        } else {
+          logger.info(`Skipping price update notification for non-tech item: ${item.title}`);
+        }
       }
     }
   }
